@@ -48,7 +48,7 @@ def toc(start_time):
     return elapsed_time
 
 
-def generateRandomGraph(number_nodes, probability_edges, seed):
+def generateRandomGraph(number_nodes, probability_edges):
     """
     Generates a random undirected graph, similarly to an Erdős-Rényi
     graph, but enforcing that the resulting graph is connected
@@ -57,7 +57,6 @@ def generateRandomGraph(number_nodes, probability_edges, seed):
     edges = combinations(range(number_nodes), 2)
     G = nx.Graph()
     G.add_nodes_from(range(number_nodes))
-    random.seed(seed)
     if probability_edges <= 0:
         return G
     if probability_edges >= 1:
@@ -72,7 +71,7 @@ def generateRandomGraph(number_nodes, probability_edges, seed):
     return G
 
 
-def allCliquesGraph(G):
+def allCliquesGraphExhaustiveSearch(G):
     """
     find and return the list of all cliques of a graph.
     :return: list of all cliques of G
@@ -101,7 +100,7 @@ def allCliquesGraph(G):
     return all_cliques, counter
 
 
-def maximumCliquesGraph(G):
+def maximumCliquesGraphExhaustiveSearch(G):
     """
     find a return the list of all maximum cliques of a graph.
     :return: list of all maximum cliques of G
@@ -144,6 +143,33 @@ def isCompleteGraph(G):
     return True  # if there are all possible edges, the graph is complete
 
 
+def findSingleMaximalClique(G):
+    """
+
+    :param G:
+    :return:
+    """
+    maximal_clique = []  # Initialize the maximal clique list
+    nodes = list(G.nodes)
+    random_node = random.randrange(0, len(nodes), 1)  # Get a random node
+    maximal_clique.append(nodes[random_node])  # put this first node in the list
+    # iterate through each node of the graph
+    for node in nodes:
+        if node in maximal_clique:
+            continue
+        next_node = True
+        for node_maximal_clique in maximal_clique:
+            if G.has_edge(node, node_maximal_clique):
+                continue
+            else:
+                next_node = False
+                break
+        if next_node is True:
+            maximal_clique.append(node)
+
+    return maximal_clique
+
+
 #########################
 ##     MAIN SCRIPT     ##
 #########################
@@ -165,27 +191,27 @@ def main():
     # Create a random graph with the student number as seed
     print('Creating a random undirected graph with ' + str(args['number_nodes']) + ' nodes, and edge probability of ' +
           str(args['probability_edges']) + ' .')
+    random.seed(args['seed'])
     G = generateRandomGraph(number_nodes=args['number_nodes'],
-                            probability_edges=args['probability_edges'],
-                            seed=args['seed'])
+                            probability_edges=args['probability_edges'])
     nx.draw(G, with_labels=True)
     plt.show()
 
-    # find all cliques of the graph
-    print('Finding all cliques from graph G...')
-    timer_all_cliques = tic()  # Start the timer
-    all_cliques, counter_all_cliques = allCliquesGraph(G)
-    execution_time_all_cliques = toc(timer_all_cliques)  # Stop the timer
-    print(execution_time_all_cliques)
-    print('All the clicks of G are: \n')
-    for clique_subgraph in all_cliques:
-        print(str(list(clique_subgraph.nodes)))
-    print('The number of cliques of G is: ' + str(len(all_cliques)))
+    # # find all cliques of the graph
+    # print('Finding all cliques from graph G...')
+    # timer_all_cliques = tic()  # Start the timer
+    # all_cliques, counter_all_cliques = allCliquesGraphExhaustiveSearch(G)
+    # execution_time_all_cliques = toc(timer_all_cliques)  # Stop the timer
+    # print(execution_time_all_cliques)
+    # print('All the clicks of G are: \n')
+    # for clique_subgraph in all_cliques:
+    #     print(str(list(clique_subgraph.nodes)))
+    # print('The number of cliques of G is: ' + str(len(all_cliques)))
 
     # find the maximum clique of the graph
     print('Finding all maximum cliques from graph G...')
     timer_all_maximum_cliques = tic()  # Start the timer
-    all_maximum_cliques, counter_all_maximum_cliques = maximumCliquesGraph(G)
+    all_maximum_cliques, counter_all_maximum_cliques = maximumCliquesGraphExhaustiveSearch(G)
     execution_time_all_maximum_cliques = toc(timer_all_maximum_cliques)  # Stop the timer
     print(execution_time_all_maximum_cliques)
     print('All the maximum clicks of G are: \n')
