@@ -16,7 +16,8 @@ from matplotlib import pyplot as plt
 #########################
 ##      VARIABLES      ##
 #########################
-
+global counter_bb_algorithm
+counter_bb_algorithm = 0
 
 #########################
 ##      FUNCTIONS      ##
@@ -75,7 +76,7 @@ def allCliquesGraphExhaustiveSearch(G):
     """
     find and return the list of all cliques of a graph.
     :return: list of all cliques of G
-    :param G: the networkx graph
+    :param G: networkx graph
     """
     # Create all the combinations of nodes possible
     nodes = list(G.nodes)
@@ -104,7 +105,7 @@ def maximumCliquesGraphExhaustiveSearch(G):
     """
     find a return the list of all maximum cliques of a graph.
     :return: list of all maximum cliques of G
-    :param G: the graph
+    :param G: networkx graph
     """
     # Create all the combinations of nodes possible
     nodes = list(G.nodes)
@@ -136,6 +137,8 @@ def isCompleteGraph(G):
     """ Check if a graph is complete.
         If any edge is missing, the graph is not complete.
         If the graphs contains all edges, the graph is complete
+        :param G: networkx graph
+        :return: True or False, depending if the graph is complete or not
     """
     for (u, v) in combinations(list(G.nodes), 2):  # check each possible pair
         if not G.has_edge(u, v):
@@ -145,16 +148,18 @@ def isCompleteGraph(G):
 
 def findSingleMaximalClique(G):
     """
-
-    :param G:
-    :return:
+    Greedy heuristic do find a single maximal clique.
+    :param G: networkx graph
+    :return: the networkx subgraph maximal clique
     """
     maximal_clique = []  # Initialize the maximal clique list
     nodes = list(G.nodes)
     random_node = random.randrange(0, len(nodes), 1)  # Get a random node
     maximal_clique.append(nodes[random_node])  # put this first node in the list
     # iterate through each node of the graph
+    counter = 0
     for node in nodes:
+        counter += 1
         if node in maximal_clique:
             continue
         next_node = True
@@ -167,7 +172,92 @@ def findSingleMaximalClique(G):
         if next_node is True:
             maximal_clique.append(node)
 
-    return maximal_clique
+    maximal_clique_subgraph = G.subgraph(maximal_clique)
+
+    return maximal_clique_subgraph, counter
+
+
+def branchBoundAlgorithmMaximumClique(G):
+    """
+    Branch and Bound algorithm for solving Maximum clique problem using greedy coloring heuristic to estimate upper
+    bound and greedy clique heuristic for lower bound on each step. https://github.com/donfaq/max_clique
+    :param G: networkx graph
+    :return: the maximum clique
+    """
+    global counter_bb_algorithm
+    maximum_clique = greedyCliqueHeuristic(G)
+    chromatic_number = greedyColoringHeuristic(G)
+    counter_bb_algorithm += 1
+    if len(maximum_clique) == chromatic_number:
+        maximum_clique_subgraph = G.subgraph(maximum_clique)
+        return maximum_clique_subgraph
+    else:
+        g1, g2 = branching(G)
+        return max(branchBoundAlgorithmMaximumClique(g1), branchBoundAlgorithmMaximumClique(g2), key=lambda x: len(x))
+
+
+def greedyCliqueHeuristic(G):
+    """
+    Greedy search for clique iterating by nodes
+    with the highest degree and filter only neighbors
+    :param G:
+    :return:
+    """
+    K = set()
+    nodes = [node[0] for node in sorted(nx.degree(G), key=lambda x: x[1], reverse=True)]
+    while len(nodes) != 0:
+        neigh = list(G.neighbors(nodes[0]))
+        K.add(nodes[0])
+        nodes.remove(nodes[0])
+        nodes = list(filter(lambda x: x in neigh, nodes))
+
+    return K
+
+
+def greedyColoringHeuristic(G):
+    """
+    Greedy graph coloring heuristic with degree order rule
+    :param G:
+    :return:
+    """
+    color_num = iter(range(0, len(G)))
+    color_map = {}
+    # used_colors = set()
+    nodes = [node[0] for node in sorted(nx.degree(G), key=lambda x: x[1], reverse=True)]
+    color_map[nodes.pop(0)] = next(color_num)  # color node with color code
+    used_colors = {i for i in color_map.values()}
+    while len(nodes) != 0:
+        node = nodes.pop(0)
+        neighbors_colors = {color_map[neighbor] for neighbor in list(filter(lambda x: x in color_map,
+                                                                            G.neighbors(node)))}
+        if len(neighbors_colors) == len(used_colors):
+            color = next(color_num)
+            used_colors.add(color)
+            color_map[node] = color
+        else:
+            color_map[node] = next(iter(used_colors - neighbors_colors))
+
+    return len(used_colors)
+
+
+def branching(G):
+    """
+    Branching procedure
+    :param G:
+    :return:
+    """
+    g1, g2 = G.copy(), G.copy()
+    max_node_degree = len(G) - 1
+    nodes_by_degree = [node for node in sorted(nx.degree(G),  # All graph nodes sorted by degree (node, degree)
+                                               key=lambda x: x[1], reverse=True)]
+    # Nodes with (current clique size < degree < max possible degree)
+    partial_connected_nodes = list(filter(lambda x: x[1] != max_node_degree and x[1] <= max_node_degree,
+                                          nodes_by_degree))
+    # graph without partial connected node with the highest degree
+    g1.remove_node(partial_connected_nodes[0][0])
+    # graph without nodes which is not connected with partial connected node with the highest degree
+    g2.remove_nodes_from(G.nodes() - G.neighbors(partial_connected_nodes[0][0]) - {partial_connected_nodes[0][0]})
+    return g1, g2
 
 
 #########################
@@ -196,6 +286,7 @@ def main():
                             probability_edges=args['probability_edges'])
     nx.draw(G, with_labels=True)
     plt.show()
+    print('\n\n')
 
     # # find all cliques of the graph
     # print('Finding all cliques from graph G...')
@@ -213,11 +304,37 @@ def main():
     timer_all_maximum_cliques = tic()  # Start the timer
     all_maximum_cliques, counter_all_maximum_cliques = maximumCliquesGraphExhaustiveSearch(G)
     execution_time_all_maximum_cliques = toc(timer_all_maximum_cliques)  # Stop the timer
-    print(execution_time_all_maximum_cliques)
+    print('Execution time using the exhaustive search is: ' + str(execution_time_all_maximum_cliques) + ' segundos.')
+    print('Number of basic operations using the exhaustive search is: ' + str(counter_all_maximum_cliques))
     print('All the maximum clicks of G are: \n')
     for maximum_clique_subgraph in all_maximum_cliques:
-        print(str(list(maximum_clique_subgraph.nodes)))
+        print(str(sorted(list(maximum_clique_subgraph.nodes))))
     print('The number of maximum cliques of G is: ' + str(len(all_maximum_cliques)))
+    print('\n\n')
+
+    # find a single maximal clique from graph G, using a greedy heuristic
+    print('Finding a single maximal clique from graph G, using a simple greedy heuristic...')
+    timer_single_maximal_clique = tic()  # Start the timer
+    single_maximal_clique, counter_single_maximal_clique = findSingleMaximalClique(G)
+    execution_time_single_maximal_clique = toc(timer_single_maximal_clique)  # Stop the timer
+    print('Execution time using a simple greedy heuristic is: ' + str(execution_time_single_maximal_clique) +
+          ' seconds.')
+    print('Number of basic operations using a simple greedy heuristic is: ' + str(counter_single_maximal_clique))
+    print('Single maximal clique is: \n')
+    print(str(sorted(list(single_maximal_clique.nodes))))
+    print('\n\n')
+
+    # find the maximum clique from graph G, using a greedy heuristic
+    print('Finding the maximum clique from graph G, using branch and bound algorithm...')
+    global counter_bb_algorithm
+    timer_maximum_clique = tic()  # Start the timer
+    maximum_clique_bb_subgraph = branchBoundAlgorithmMaximumClique(G)
+    execution_time_maximum_clique = toc(timer_maximum_clique)  # Stop the timer
+    print('Execution time using the greedy heuristic is: ' + str(execution_time_maximum_clique) + ' seconds.')
+    print('Number of basic operations using the greedy heuristic is: ' + str(counter_bb_algorithm))
+    print('Maximum clique is: \n')
+    print(str(sorted(list(maximum_clique_bb_subgraph.nodes))))
+    print('\n\n')
 
 
 if __name__ == "__main__":
