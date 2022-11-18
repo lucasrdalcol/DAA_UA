@@ -265,13 +265,32 @@ def branching(G):
     return g1, g2
 
 
+def drawGraph(G, SG, title):
+    """
+    Draws the undirected graphs, highlighting the clique
+    @param G: the graph created with networkx library. Datatype: networkx object
+    @param title: the title of the graph. Datatype: string
+    @return: a matplotlib figure. Datatype: matplotlib object
+    """
+    plt.figure()
+    plt.title(title)
+    plt.axis('off')
+
+    pos_G = nx.spring_layout(G, seed=91352)
+    pos_SG = nx.spring_layout(SG, seed=91352)
+    nx.draw(G, pos=pos_G, with_labels=True)
+    nx.draw(SG, pos=pos_SG, with_labels=True, node_color='red', edge_color='red')
+
+    return plt
+
+
 #########################
 ##     MAIN SCRIPT     ##
 #########################
 def main():
-    # ---------------------------------------------------
+    ###################################################################
     # Initialization of the argparse arguments
-    # ---------------------------------------------------
+    ###################################################################
     ap = argparse.ArgumentParser()
     ap.add_argument('-nmn', '--number_maximum_nodes', required=True, type=int, help="Define maximum number of nodes.")
     ap.add_argument('-pe', '--probabilities_edges', type=list, default=[0.125, 0.25, 0.5, 0.75],
@@ -295,15 +314,18 @@ def main():
     list_nodes = list(range(4, args['number_maximum_nodes'] + 1))
     for number_nodes in list_nodes:
         for edge_probability in args['probabilities_edges']:
+            ###################################################################
             # Create a random graph with the student number as seed
+            ###################################################################
             print(Back.RED + 'Creating a random undirected graph with ' + str(number_nodes) +
-                  ' nodes, and edge probability of ' + str(edge_probability) + ' .' + Back.RESET)
+                  ' nodes, and edge probability of ' + str(edge_probability) + Back.RESET)
             G = generateRandomGraph(number_nodes=number_nodes,
                                     probability_edges=edge_probability)
-            standard_name = 'fig_n' + str(number_nodes) + '_p' + str(edge_probability) + '_'
-            print('\n')
+            standard_filename = 'fig_n' + str(number_nodes) + '_p' + str(edge_probability) + '_'
 
+            ###################################################################
             # # find all cliques of the graph
+            ###################################################################
             # print('Finding all cliques from graph G...')
             # timer_all_cliques = tic()  # Start the timer
             # all_cliques, counter_all_cliques = allCliquesGraphExhaustiveSearch(G)
@@ -314,9 +336,12 @@ def main():
             #     print(str(list(clique_subgraph.nodes)))
             # print('The number of cliques of G is: ' + str(len(all_cliques)))
 
+            ###################################################################
             # find the maximum clique of the graph
+            ###################################################################
             timer_all_maximum_cliques = tic()  # Start the timer
-            all_maximum_cliques, counter_solutions_all_maximum_cliques, counter_basic_operation_all_maximum_cliques = maximumCliquesGraphExhaustiveSearch(G)
+            all_maximum_cliques, counter_solutions_all_maximum_cliques, counter_basic_operation_all_maximum_cliques = maximumCliquesGraphExhaustiveSearch(
+                G)
             execution_time_all_maximum_cliques = toc(timer_all_maximum_cliques)  # Stop the timer
             # Save results in the csv file
             maximum_cliques_list = [sorted(list(maximum_clique_subgraph.nodes)) for maximum_clique_subgraph in
@@ -325,18 +350,37 @@ def main():
                    counter_basic_operation_all_maximum_cliques, execution_time_all_maximum_cliques,
                    counter_solutions_all_maximum_cliques]
             writer.writerow(row)
+            # Draw graph and save in disk
+            for index, maximum_clique_subgraph in enumerate(all_maximum_cliques):
+                title = str(number_nodes) + ' nodes - ' + str(edge_probability) + ' edge probability - ' + \
+                        'Exhaustive Search Solution ' + str(index + 1)
+                graph_plt = drawGraph(G=G, SG=maximum_clique_subgraph, title=title)
+                filename = figure_results_folder_path + standard_filename + 'exhaustive_' + str(index + 1) + '.png'
+                graph_plt.savefig(filename)
+                graph_plt.close()
 
-            # find a single maximal clique from graph G, using a greedy heuristic
+            ###################################################################
+            # find a single maximal clique from graph G (not always an maximum clique), using a simple greedy heuristic
+            ###################################################################
             timer_single_maximal_clique = tic()  # Start the timer
-            single_maximal_clique, counter_solutions_single_maximal_clique, counter_basic_operations_single_maximal_clique = findSingleMaximalClique(G)
+            single_maximal_clique, counter_solutions_single_maximal_clique, counter_basic_operations_single_maximal_clique = findSingleMaximalClique(
+                G)
             execution_time_single_maximal_clique = toc(timer_single_maximal_clique)  # Stop the timer
             # Save results in the csv file
             row = [number_nodes, G.number_of_edges(), edge_probability, 'Maximal Clique - Simple Greedy',
                    str(sorted(list(single_maximal_clique.nodes))), counter_basic_operations_single_maximal_clique,
                    execution_time_single_maximal_clique, counter_solutions_single_maximal_clique]
             writer.writerow(row)
+            # Draw graph and save in disk
+            title = str(number_nodes) + ' nodes - ' + str(edge_probability) + ' edge probability - ' + 'Simple Greedy Heuristic'
+            graph_plt = drawGraph(G=G, SG=single_maximal_clique, title=title)
+            filename = figure_results_folder_path + standard_filename + 'simple-greedy.png'
+            graph_plt.savefig(filename)
+            graph_plt.close()
 
-            # find the maximum clique from graph G, using a greedy heuristic
+            ###################################################################
+            # find the maximum clique from graph G, using the branch bound greedy heuristic
+            ###################################################################
             global counter_solutions_bb_algorithm
             timer_maximum_clique = tic()  # Start the timer
             maximum_clique_bb_subgraph = branchBoundAlgorithmMaximumClique(G)
@@ -346,6 +390,12 @@ def main():
                    str(sorted(list(maximum_clique_bb_subgraph.nodes))), 'Not used', execution_time_maximum_clique,
                    counter_solutions_bb_algorithm]
             writer.writerow(row)
+            # Draw graph and save in disk
+            title = str(number_nodes) + ' nodes - ' + str(edge_probability) + ' edge probability - ' + 'Branch Bound Greedy Heuristic'
+            graph_plt = drawGraph(G=G, SG=maximum_clique_bb_subgraph, title=title)
+            filename = figure_results_folder_path + standard_filename + 'branch-bound-greedy.png'
+            graph_plt.savefig(filename)
+            graph_plt.close()
 
     file.close()
     print('Results csv and graph figures saved successfully!')
