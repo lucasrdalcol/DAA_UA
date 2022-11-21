@@ -275,11 +275,23 @@ def drawGraph(G, SG, title):
     plt.figure()
     plt.title(title)
     plt.axis('off')
+    pos = nx.spring_layout(G, seed=91352)
 
-    pos_G = nx.spring_layout(G, seed=91352)
-    pos_SG = nx.spring_layout(SG, seed=91352)
-    nx.draw(G, pos=pos_G, with_labels=True)
-    nx.draw(SG, pos=pos_SG, with_labels=True, node_color='red', edge_color='red')
+    color_map_nodes = []
+    for node in G:
+        if node in SG.nodes:
+            color_map_nodes.append('red')
+        else:
+            color_map_nodes.append('#1f78b4')
+
+    color_map_edges = []
+    for edge in G.edges:
+        if edge in SG.edges:
+            color_map_edges.append('red')
+        else:
+            color_map_edges.append('black')
+
+    nx.draw(G, pos, node_color=color_map_nodes, edge_color=color_map_edges, with_labels=True)
 
     return plt
 
