@@ -129,6 +129,8 @@ def maximumCliquesGraphExhaustiveSearch(G):
                 # print('the subgraph ' + str(list(SG.nodes)) + ' is a maximum clique of G.')
                 maximum_number_nodes = len(list(SG.nodes))
                 all_maximum_cliques.append(SG)
+            else:
+                break
     # print('the number of maximum cliques of G is: ' + str(len(all_maximum_cliques)))
 
     return all_maximum_cliques, counter_solutions, counter_basic_operations
