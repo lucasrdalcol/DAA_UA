@@ -183,6 +183,7 @@ def findSingleMaximalClique(G):
 
     return maximal_clique_subgraph, counter_solutions, counter_basic_operations
 
+# teste push github pycharm
 
 def branchBoundAlgorithmMaximumClique(G):
     """
